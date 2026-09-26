@@ -7,7 +7,7 @@ This project implements a binomial options pricing model. The stock price is mod
 
 ## Plan
 
-- [] Stage 0: initialise repository with structure
+- [x] Stage 0: initialise repository with structure
 - [] Stage 1: Tree with European call
 - [] Stage 2: European put and put-call parity
 - [] Stage 3: Convergence study
