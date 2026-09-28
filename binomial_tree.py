@@ -8,6 +8,14 @@ import numpy as np
 from math import exp, sqrt
 
 
+def call_payoff(S, K):
+    return np.maximum(S - K, 0)
+
+
+def put_payoff(S, K):
+    return np.maximum(K - S, 0)
+
+
 def stock_tree(S: float, sigma: float, t: float, N: int) -> np.ndarray:
     """
     Build the CRR stock price tree.
@@ -27,12 +35,12 @@ def stock_tree(S: float, sigma: float, t: float, N: int) -> np.ndarray:
     return tree
 
 
-def backwards_tree(K: float, sigma: float, r: float,
-                   t: float, N: int, tree: np.ndarray):
+def price_call_of_tree(K: float, sigma: float, r: float,
+                       t: float, N: int, tree: np.ndarray):
     payoffs = np.zeros((N + 1, N + 1))
     for j in range(N + 1):
         terminal_stock = tree[N, j]
-        payoffs[N, j] = np.maximum(terminal_stock - K, 0)
+        payoffs[N, j] = call_payoff(terminal_stock, K)
 
     p = risk_neutral_up_prob(t, r, sigma, N)
     disc = step_discount(t, r, N)
@@ -41,7 +49,7 @@ def backwards_tree(K: float, sigma: float, r: float,
         for j in range(i + 1):
             payoffs[i, j] = disc * (p * payoffs[i + 1, j + 1] + (1 - p) * payoffs[i + 1, j])
 
-    return payoffs
+    return payoffs[0, 0]
 
 
 def binomial_price(
@@ -52,18 +60,25 @@ def binomial_price(
     """
     Price a European or American option using a CRR binomial tree.
 
-    Args
-    S : Spot price
-    K : Strike price
-    T: Time to expiry, in years
-    r : risk-free rate
-    sigma : volatility
-    N : Number of time steps
-    option_type : Determines the payoff function at expiry (call or put)
-    exercise : Determines whether early exercise is allowed
-        (European vs American)"""
+    Args:
+        S: Spot price.
+        K: Strike price.
+        t: Time to expiry, in years.
+        r: Risk-free rate (annual, decimal).
+        sigma: Volatility (annual, decimal).
+        N: Number of time steps.
+        option_type: "call" or "put".
+        exercise: "european" or "american".
 
-    return backwards_tree(K, sigma, r, t, N, stock_tree(S, sigma, t, N))[0, 0]
+    Returns:
+        The option price.
+
+    Note:
+        Only European calls are implemented at present. Put and
+        American support are added in later stages.
+    """
+
+    return price_call_of_tree(K, sigma, r, t, N, stock_tree(S, sigma, t, N))
 
 
 def time_step(T: float, N: int) -> float:
@@ -88,16 +103,5 @@ def step_discount(t: float, r: float, N: int) -> float:
 
 
 if __name__ == "__main__":
-    print(f"dt for T=1, N=4: {time_step(1, 4)}")
-    u, d = u_d(0.2, 1, 4)
-    print(f"u = {u:.4f}, d = {d:.4f}")
-    print(f"u * d = {u * d:.4f}  (should be 1.0)")
 
-    print(stock_tree(100, 0.2, 1, 3))
-
-    print(backwards_tree(100, 0.2, 0.05, 1, 3, stock_tree(100, 0.2, 1, 3)))
-
-    for N in [1, 2, 3, 5, 10, 50, 100, 500, 1000]:
-        tree = stock_tree(100, 0.2, 1, N)
-        price = backwards_tree(100, 0.2, 0.05, 1, N, tree)[0, 0]
-        print(f"N={N:4d}  price={price:.4f}  error={price - 10.4506:+.4f}")
+    pass
