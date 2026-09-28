@@ -8,7 +8,7 @@ import numpy as np
 from math import exp, sqrt
 
 
-def stock_tree(S: float, sigma: float, T: float, N: int) -> np.ndarray:
+def stock_tree(S: float, sigma: float, t: float, N: int) -> np.ndarray:
     """
     Build the CRR stock price tree.
 
@@ -17,9 +17,8 @@ def stock_tree(S: float, sigma: float, T: float, N: int) -> np.ndarray:
     after j up-moves. Entries with j > i are zero.
     """
 
-    u, d = u_d(sigma, T, N)
+    u, d = u_d(sigma, t, N)
     tree = np.zeros((N + 1, N + 1))
-    # tree[0, 0] = S
 
     for i in range(N + 1):  # loop over time
         for j in range(i + 1):  # loop over states going up
@@ -28,8 +27,25 @@ def stock_tree(S: float, sigma: float, T: float, N: int) -> np.ndarray:
     return tree
 
 
+def backwards_tree(K: float, sigma: float, r: float,
+                   t: float, N: int, tree: np.ndarray):
+    payoffs = np.zeros((N + 1, N + 1))
+    for j in range(N + 1):
+        terminal_stock = tree[N, j]
+        payoffs[N, j] = np.maximum(terminal_stock - K, 0)
+
+    p = risk_neutral_up_prob(t, r, sigma, N)
+    disc = step_discount(t, r, N)
+
+    for i in range(N - 1, -1, -1):
+        for j in range(i + 1):
+            payoffs[i, j] = disc * (p * payoffs[i + 1, j + 1] + (1 - p) * payoffs[i + 1, j])
+
+    return payoffs
+
+
 def binomial_price(
-    S: float, K: float, T: float, r: float, sigma: float, N: int,
+    S: float, K: float, t: float, r: float, sigma: float, N: int,
     option_type: str = "call",
     exercise: str = "european",
 ) -> float:
@@ -47,10 +63,7 @@ def binomial_price(
     exercise : Determines whether early exercise is allowed
         (European vs American)"""
 
-
-    prices_array = []
-
-    raise NotImplementedError("Not yet implemented")
+    return backwards_tree(K, sigma, r, t, N, stock_tree(S, sigma, t, N))[0, 0]
 
 
 def time_step(T: float, N: int) -> float:
@@ -63,14 +76,15 @@ def u_d(sigma: float, T: float, N: int) -> tuple[float, float]:
     return (u, d)
 
 
-def risk_neutral_up_prob(
-        S: float, K: float, T: float, r: float, sigma: float, N: int) -> float:
-    u, d = u_d(sigma, T, N)
-    return (exp(r * time_step(T, N)) - d/(u - d))
+def risk_neutral_up_prob(t: float, r: float, sigma: float, N: int) -> float:
+    u, d = u_d(sigma, t, N)
+    p = (exp(r * time_step(t, N)) - d) / (u - d)
+    assert 0 < p < 1, f"p = {p} is not a valid probability"
+    return p
 
 
-def step_discount(T: float, r: float, N: int) -> float:
-    return exp(-r * time_step(T, N))
+def step_discount(t: float, r: float, N: int) -> float:
+    return exp(-r * time_step(t, N))
 
 
 if __name__ == "__main__":
@@ -80,3 +94,10 @@ if __name__ == "__main__":
     print(f"u * d = {u * d:.4f}  (should be 1.0)")
 
     print(stock_tree(100, 0.2, 1, 3))
+
+    print(backwards_tree(100, 0.2, 0.05, 1, 3, stock_tree(100, 0.2, 1, 3)))
+
+    for N in [1, 2, 3, 5, 10, 50, 100, 500, 1000]:
+        tree = stock_tree(100, 0.2, 1, N)
+        price = backwards_tree(100, 0.2, 0.05, 1, N, tree)[0, 0]
+        print(f"N={N:4d}  price={price:.4f}  error={price - 10.4506:+.4f}")
