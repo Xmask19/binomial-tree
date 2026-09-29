@@ -7,7 +7,8 @@ from binomial_tree import (
     stock_tree,
     u_d,
     risk_neutral_up_prob,
-    time_step
+    time_step,
+    bs_call_price
 )
 
 S0, K0, T0, R0, SIGMA0 = 100.0, 100.0, 1.0, 0.05, 0.2
@@ -49,6 +50,11 @@ def test_u_d_reciprocal():
     from binomial_tree import u_d
     u, d = u_d(SIGMA0, T0, 4)
     assert u * d == pytest.approx(1.0)
+
+
+def test_bs_call_price_matches_known_value():
+    assert bs_call_price(S0, K0, T0, R0, SIGMA0) == pytest.approx(BS_CALL, abs=1e-3)
+
 
 # --- Prices ----------------------------------------------------------
 

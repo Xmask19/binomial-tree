@@ -4,8 +4,16 @@ Binomial options pricing model.
 Implements the binomial options pricing model.
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
-from math import exp, sqrt
+from scipy.stats import norm
+from math import log, sqrt, exp
+
+
+def bs_call_price(S, K, t, r, sigma):
+    d1 = (log(S / K) + (r + sigma**2 / 2) * t) / (sigma * sqrt(t))
+    d2 = d1 - sigma * sqrt(t)
+    return S * norm.cdf(d1) - K * exp(-r * t) * norm.cdf(d2)
 
 
 def call_payoff(S, K):
@@ -110,6 +118,32 @@ def step_discount(t: float, r: float, N: int) -> float:
     return exp(-r * time_step(t, N))
 
 
-if __name__ == "__main__":
+def plot_convergence(S: float = 100, K: float = 100, t: float = 1,
+                     r: float = 0.05, sigma: float = 0.2,
+                     option_type: str = "call", exercise: str = "european",
+                     n=200) -> None:
 
-    pass
+    bs_price = bs_call_price(S, K, t, r, sigma)
+    prices = np.array([binomial_price(S, K, t, r, sigma, N, option_type,
+                                      exercise) for N in range(1, n + 1)])
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(
+        np.arange(1, n + 1),
+        prices,
+        linewidth=1,
+        label="Binomial Price",
+    )
+    plt.axhline(bs_price, color="red", linestyle="--",
+                label=f"Black-Scholes ({bs_price:.2f})")
+    plt.xlabel("Number of steps N")
+    plt.ylabel("European call price")
+    plt.title("Binomial tree convergence to Black-Scholes")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig("output/convergence.png", dpi=150)
+    plt.show()
+
+
+if __name__ == "__main__":
+    plot_convergence()
