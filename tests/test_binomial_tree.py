@@ -15,6 +15,7 @@ S0, K0, T0, R0, SIGMA0 = 100.0, 100.0, 1.0, 0.05, 0.2
 BS_CALL = 10.4506
 BS_PUT = 5.5735
 TREE_N1_CALL = 12.162285
+TREE_N1_PUT = 7.285227
 
 # --- Helpers ---------------------------------------------------------
 
@@ -59,11 +60,29 @@ def test_call_n1():
     up_payoff = 100(u - 1) = 22.1403
     price = exp(-0.05) * p * up_payoff = 12.162285
     """
-    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1)
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1, "call")
     assert price == pytest.approx(TREE_N1_CALL, abs=1e-6)
+
+
+def test_put_n1():
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1, option_type="put")
+    assert price == pytest.approx(TREE_N1_PUT, abs=1e-6)
 
 
 def test_call_converges_to_black_scholes():
     """N=1000 should be within 0.01 of the closed form price."""
-    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1000)
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1000, "call")
     assert price == pytest.approx(BS_CALL, abs=0.01)
+
+
+def test_put_converges_to_black_scholes():
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1000, "put")
+    assert price == pytest.approx(BS_PUT, abs=0.01)
+
+
+def test_put_call_parity():
+    """Put-call parity should hold."""
+    for N in [10, 25, 50, 100]:
+        call = binomial_price(S0, K0, T0, R0, SIGMA0, N, "call")
+        put = binomial_price(S0, K0, T0, R0, SIGMA0, N, "put")
+        assert call - put == pytest.approx(S0 - K0 * exp(-R0 * T0), abs=1e-10)

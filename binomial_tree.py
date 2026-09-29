@@ -35,26 +35,34 @@ def stock_tree(S: float, sigma: float, t: float, N: int) -> np.ndarray:
     return tree
 
 
-def price_call_of_tree(K: float, sigma: float, r: float,
-                       t: float, N: int, tree: np.ndarray):
+def price_european_of_tree(K: float, sigma: float, r: float, t: float, N: int,
+                           tree: np.ndarray, option_type: str):
     payoffs = np.zeros((N + 1, N + 1))
     for j in range(N + 1):
         terminal_stock = tree[N, j]
-        payoffs[N, j] = call_payoff(terminal_stock, K)
+        if option_type == "call":
+            payoffs[N, j] = call_payoff(terminal_stock, K)
+        elif option_type == "put":
+            payoffs[N, j] = put_payoff(terminal_stock, K)
+        else:
+            raise ValueError("Not a valid option type, expected call or put")
 
     p = risk_neutral_up_prob(t, r, sigma, N)
     disc = step_discount(t, r, N)
 
     for i in range(N - 1, -1, -1):
         for j in range(i + 1):
-            payoffs[i, j] = disc * (p * payoffs[i + 1, j + 1] + (1 - p) * payoffs[i + 1, j])
+            up = payoffs[i+1, j+1]
+            down = payoffs[i+1, j]
+
+            payoffs[i, j] = disc * (p * up + (1 - p) * down)
 
     return payoffs[0, 0]
 
 
 def binomial_price(
     S: float, K: float, t: float, r: float, sigma: float, N: int,
-    option_type: str = "call",
+    option_type: str,
     exercise: str = "european",
 ) -> float:
     """
@@ -74,11 +82,11 @@ def binomial_price(
         The option price.
 
     Note:
-        Only European calls are implemented at present. Put and
-        American support are added in later stages.
+        Only European options are implemented, American options will be added.
     """
 
-    return price_call_of_tree(K, sigma, r, t, N, stock_tree(S, sigma, t, N))
+    return price_european_of_tree(K, sigma, r, t, N,
+                                  stock_tree(S, sigma, t, N), option_type)
 
 
 def time_step(T: float, N: int) -> float:
