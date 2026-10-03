@@ -43,8 +43,13 @@ def stock_tree(S: float, sigma: float, t: float, N: int) -> np.ndarray:
     return tree
 
 
-def price_european_of_tree(K: float, sigma: float, r: float, t: float, N: int,
-                           tree: np.ndarray, option_type: str):
+def price_on_tree(K: float, sigma: float, r: float, t: float, N: int,
+                  tree: np.ndarray, option_type: str, exercise: str):
+    if option_type not in ("call", "put"):
+        raise ValueError(f"unknown option type: {option_type}")
+    if exercise not in ("european", "american"):
+        raise ValueError(f"unknown exercise: {exercise}")
+
     payoffs = np.zeros((N + 1, N + 1))
     for j in range(N + 1):
         terminal_stock = tree[N, j]
@@ -60,18 +65,25 @@ def price_european_of_tree(K: float, sigma: float, r: float, t: float, N: int,
 
     for i in range(N - 1, -1, -1):
         for j in range(i + 1):
-            up = payoffs[i+1, j+1]
-            down = payoffs[i+1, j]
-
-            payoffs[i, j] = disc * (p * up + (1 - p) * down)
-
+            up = payoffs[i + 1, j + 1]
+            down = payoffs[i + 1, j]
+            continuation = disc * (p * up + (1 - p) * down)
+            if exercise == "european":
+                payoffs[i, j] = continuation
+            if exercise == "american":
+                if option_type == "call":
+                    payoffs[i, j] = max(continuation,
+                                        tree[i, j] - K)
+                if option_type == "put":
+                    payoffs[i, j] = max(continuation,
+                                        K - tree[i, j])
     return payoffs[0, 0]
 
 
 def binomial_price(
     S: float, K: float, t: float, r: float, sigma: float, N: int,
     option_type: str,
-    exercise: str = "european",
+    exercise: str,
 ) -> float:
     """
     Price a European or American option using a CRR binomial tree.
@@ -93,8 +105,8 @@ def binomial_price(
         Only European options are implemented, American options will be added.
     """
 
-    return price_european_of_tree(K, sigma, r, t, N,
-                                  stock_tree(S, sigma, t, N), option_type)
+    return price_on_tree(K, sigma, r, t, N, stock_tree(S, sigma, t, N),
+                         option_type, exercise)
 
 
 def time_step(T: float, N: int) -> float:
@@ -146,4 +158,5 @@ def plot_convergence(S: float = 100, K: float = 100, t: float = 1,
 
 
 if __name__ == "__main__":
-    plot_convergence()
+    print(binomial_price(100, 100, 1, 0.05, 0.2, 1000, "put", "european"))
+    # plot_convergence()

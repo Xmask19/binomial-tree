@@ -41,19 +41,18 @@ def test_risk_neutral_martingale():
 
 
 def test_probability_in_range():
-    from binomial_tree import risk_neutral_up_prob
     p = risk_neutral_up_prob(T0, R0, SIGMA0, 10)
     assert 0 < p < 1
 
 
 def test_u_d_reciprocal():
-    from binomial_tree import u_d
     u, d = u_d(SIGMA0, T0, 4)
     assert u * d == pytest.approx(1.0)
 
 
 def test_bs_call_price_matches_known_value():
-    assert bs_call_price(S0, K0, T0, R0, SIGMA0) == pytest.approx(BS_CALL, abs=1e-3)
+    assert bs_call_price(S0, K0, T0, R0, SIGMA0) == pytest.approx(BS_CALL,
+                                                                  abs=1e-3)
 
 
 # --- Prices ----------------------------------------------------------
@@ -66,29 +65,53 @@ def test_call_n1():
     up_payoff = 100(u - 1) = 22.1403
     price = exp(-0.05) * p * up_payoff = 12.162285
     """
-    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1, "call")
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1, "call", "european")
     assert price == pytest.approx(TREE_N1_CALL, abs=1e-6)
 
 
 def test_put_n1():
-    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1, option_type="put")
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1, "put", "european")
     assert price == pytest.approx(TREE_N1_PUT, abs=1e-6)
 
 
 def test_call_converges_to_black_scholes():
     """N=1000 should be within 0.01 of the closed form price."""
-    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1000, "call")
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1000, "call", "european")
     assert price == pytest.approx(BS_CALL, abs=0.01)
 
 
 def test_put_converges_to_black_scholes():
-    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1000, "put")
+    price = binomial_price(S0, K0, T0, R0, SIGMA0, 1000, "put", "european")
     assert price == pytest.approx(BS_PUT, abs=0.01)
 
 
 def test_put_call_parity():
-    """Put-call parity should hold."""
+    """Put-call parity should hold for European options."""
     for N in [10, 25, 50, 100]:
-        call = binomial_price(S0, K0, T0, R0, SIGMA0, N, "call")
-        put = binomial_price(S0, K0, T0, R0, SIGMA0, N, "put")
+        call = binomial_price(S0, K0, T0, R0, SIGMA0, N, "call", "european")
+        put = binomial_price(S0, K0, T0, R0, SIGMA0, N, "put", "european")
         assert call - put == pytest.approx(S0 - K0 * exp(-R0 * T0), abs=1e-10)
+
+
+def test_european_eq_american():
+    """
+    For a non-dividend stock, European and American options should
+    have the same payoff.
+    """
+    american = binomial_price(S0, K0, T0, R0, SIGMA0, 100, option_type="call",
+                              exercise="american")
+    european = binomial_price(S0, K0, T0, R0, SIGMA0, 100, option_type="call",
+                              exercise="european")
+    assert american == pytest.approx(european, abs=1e-10)
+
+
+def test_american_put_greater():
+    """
+    Early exercise makes an American put
+    more valuable than a European one.
+    """
+    american = binomial_price(S0, K0, T0, R0, SIGMA0, 100, option_type="put",
+                              exercise="american")
+    european = binomial_price(S0, K0, T0, R0, SIGMA0, 100, option_type="put",
+                              exercise="european")
+    assert american > european

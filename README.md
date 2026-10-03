@@ -2,7 +2,15 @@
 
 ## Overview
 
-This project implements a binomial options pricing model. The stock price is modelled over discrete time steps, with a fixed probability of moving up or down at each step. The option price is then computed by working backwards from the possible payoffs at maturity.
+This project implements a binomial options pricing model. The stock price is modelled over discrete time steps, with a fixed probability of moving up or down at each step. The option price is then computed by working backwards from the possible payoffs at maturity. The binomial tree is a discrete-time alternative to the Black-Scholes formula. Unlike Black-Scholes, it can price American options and other contracts without closed-form solutions.
+
+## What's implemented
+
+- European call and put prices via the CRR binomial tree.
+- American options, with early exercise evaluated at each node.
+- Convergence study against the Black-Scholes closed-form price.
+- A pytest suite covering the tree, the pricing recursion, and
+  the American-vs-European relationships.
 
 ## Plan
 
@@ -10,22 +18,65 @@ This project implements a binomial options pricing model. The stock price is mod
 - [x] Stage 1: Tree with European call
 - [x] Stage 2: European put and put-call parity
 - [x] Stage 3: Convergence study
-- [] Stage 4: American options
-- [] Stage 5: Dividends
-- [] Stage 6: Trinomial tree
-
+- [x] Stage 4: American options
+- [ ] Stage 5: Dividends
+- [ ] Stage 6: Trinomial tree
 
 ## Convergence
 
 ![Convergence to Black-Scholes](output/convergence.png)
-The Cox-Ross-Rubinstein (CRR) tree converges to the Black-Scholes price as the number of time steps increases. For the standard test case ($S=100$, $K=100$, $T=1$, $r=0.05$, $\sigma=0.2$), the tree price approaches $10.4506$. 
 
-The convergence is not monotone: the price oscillates around the Black-Scholes value, with the amplitude decreasing at rate $O(1/N)$(Leisen & Reimer, 1996).
+The Cox-Ross-Rubinstein (CRR) tree converges to the Black-Scholes price as the number of time steps increases. For the standard test case ($S=100$, $K=100$, $T=1$, $r=0.05$, $\sigma=0.2$), the tree price approaches $10.45$. 
+
+The convergence is not monotone: the price oscillates around the Black-Scholes value, with the amplitude decreasing at rate $O(1/N)$ (Leisen & Reimer, 1996).
+
+## American options
+
+Unlike the Black-Scholes formula, the binomial tree can price American options, which can be exercised at any time before expiry. The backward recursion visits each node with knowledge of the stock price at that node, so it can compare holding the option to immediate exercise.
+
+At each non-terminal node, the option value is
+
+$$
+V = \max\left(\text{continuation value}, \; \text{intrinsic value}\right)
+$$
+
+where the continuation value is the discounted expected value of the next two nodes (the same as a European option) and the intrinsic value is the value if exercised immediately, $S - K$ for a call or $K - S$ for a put. At expiry, the option is worth its intrinsic value.
+
+For a non-dividend-paying stock, two results hold:
+- **American calls equal European calls.** Exercising early means paying the strike sooner and giving up the interest that could have been earned on it, without gaining anything in return.
+
+- **American puts are worth more than European puts.** Exercising a deep in-the-money put early lets the strike be invested at the risk-free rate, which is valuable when rates are positive.
+
+For the standard test case, the American call price matches the European call at $10.45$, while the American put exceeds the European put: at $N = 1000$ the American put is $6.09$ against a European put of $5.57$.
+
+## Usage
+
+    pip install -r requirements.txt
+    python binomial_tree.py
+
+## Tests
+
+    python -m pytest -v
+
+The suite validates:
+
+- The CRR invariant $u \cdot d = 1$.
+- The risk-neutral martingale property.
+- European calls and puts against known values and Black-Scholes.
+- Put-call parity for European options.
+- American calls equal European calls for a non-dividend-paying stock; American puts exceed European puts.
+
+## Project structure
+
+    binomial-tree/
+    ├── binomial_tree.py          # tree pricing, convergence plot
+    ├── tests/
+    │   └── test_binomial_tree.py
+    ├── requirements.txt
+    ├── README.md
+    ├── .gitignore
+    └── output/                   # generated plots
 
 ## References
 
-Leisen, D. P. J., & Reimer, M. (1996). Binomial models for option valuation — examining and improving convergence. Applied Mathematical Finance, 3(4), 319–346.
-
-## Setup
-
-    pip install -r requirements.txt
+- Leisen, D. P. J., & Reimer, M. (1996). Binomial models for option valuation — examining and improving convergence. *Applied Mathematical Finance*, 3(4), 319–346.
