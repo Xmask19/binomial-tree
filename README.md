@@ -38,7 +38,7 @@ Unlike the Black-Scholes formula, the binomial tree can price American options, 
 At each non-terminal node, the option value is
 
 $$
-V = \max\left(\text{continuation value}, \; \text{intrinsic value}\right)
+V = \max\left(\text{continuation value}, \text{intrinsic value}\right)
 $$
 
 where the continuation value is the discounted expected value of the next two nodes (the same as a European option) and the intrinsic value is the value if exercised immediately, $S - K$ for a call or $K - S$ for a put. At expiry, the option is worth its intrinsic value.
@@ -73,26 +73,16 @@ For European options, the tree is validated against the dividend-adjusted
 Black-Scholes formulas:
 
 $$
-C =
-S_0 e^{-qT} N(d_1)
--
-K e^{-rT} N(d_2).
+C = S_0 e^{-qT} N(d_1) - K e^{-rT} N(d_2).
 $$
 
 $$
-P =
-K e^{-rT} N(-d_2)
--
-S_0 e^{-qT} N(-d_1).
-$$
+P = K e^{-rT} N(-d_2) - S_0 e^{-qT} N(-d_1). $$
 
 The implementation also satisfies dividend-adjusted put-call parity,
 
 $$
-C - P =
-S_0 e^{-qT}
--
-K e^{-rT}.
+C - P = S_0 e^{-qT} - K e^{-rT}.
 $$
 
 Increasing the dividend yield lowers the value of European calls and raises
