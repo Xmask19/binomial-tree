@@ -44,23 +44,25 @@ def stock_tree(S: float, sigma: float, t: float, N: int) -> np.ndarray:
 
 
 def price_on_tree(K: float, sigma: float, r: float, t: float, N: int,
-                  tree: np.ndarray, option_type: str, exercise: str):
+                  tree: np.ndarray, option_type: str, exercise: str,
+                  q: float = 0):
+    """
+    Price an option on a prebuilt stock tree.
+
+    Args and returns match binomial_price, except the tree is
+    supplied rather than constructed.
+    """
     if option_type not in ("call", "put"):
         raise ValueError(f"unknown option type: {option_type}")
     if exercise not in ("european", "american"):
         raise ValueError(f"unknown exercise: {exercise}")
-
+    if option_type == "call":
+        payoff = call_payoff
+    else:
+        payoff = put_payoff
     payoffs = np.zeros((N + 1, N + 1))
-    for j in range(N + 1):
-        terminal_stock = tree[N, j]
-        if option_type == "call":
-            payoffs[N, j] = call_payoff(terminal_stock, K)
-        elif option_type == "put":
-            payoffs[N, j] = put_payoff(terminal_stock, K)
-        else:
-            raise ValueError("Not a valid option type, expected call or put")
-
-    p = risk_neutral_up_prob(t, r, sigma, N)
+    payoffs[N, :] = payoff(tree[N, :], K)
+    p = risk_neutral_up_prob(t, r, sigma, N, q)
     disc = step_discount(t, r, N)
 
     for i in range(N - 1, -1, -1):
@@ -68,22 +70,18 @@ def price_on_tree(K: float, sigma: float, r: float, t: float, N: int,
             up = payoffs[i + 1, j + 1]
             down = payoffs[i + 1, j]
             continuation = disc * (p * up + (1 - p) * down)
-            if exercise == "european":
-                payoffs[i, j] = continuation
             if exercise == "american":
-                if option_type == "call":
-                    payoffs[i, j] = max(continuation,
-                                        tree[i, j] - K)
-                if option_type == "put":
-                    payoffs[i, j] = max(continuation,
-                                        K - tree[i, j])
+                intrinsic = payoff(tree[i, j], K)
+                payoffs[i, j] = max(continuation, intrinsic)
+            else:
+                payoffs[i, j] = continuation
+
     return payoffs[0, 0]
 
 
 def binomial_price(
     S: float, K: float, t: float, r: float, sigma: float, N: int,
-    option_type: str,
-    exercise: str,
+    option_type: str, exercise: str, q: float = 0
 ) -> float:
     """
     Price a European or American option using a CRR binomial tree.
@@ -97,16 +95,14 @@ def binomial_price(
         N: Number of time steps.
         option_type: "call" or "put".
         exercise: "european" or "american".
+        q: Continuous dividend yield (annual, decimal). Defaults to 0.
 
     Returns:
         The option price.
-
-    Note:
-        Only European options are implemented, American options will be added.
     """
 
     return price_on_tree(K, sigma, r, t, N, stock_tree(S, sigma, t, N),
-                         option_type, exercise)
+                         option_type, exercise, q)
 
 
 def time_step(T: float, N: int) -> float:
@@ -119,9 +115,10 @@ def u_d(sigma: float, T: float, N: int) -> tuple[float, float]:
     return (u, d)
 
 
-def risk_neutral_up_prob(t: float, r: float, sigma: float, N: int) -> float:
+def risk_neutral_up_prob(t: float, r: float, sigma: float, N: int,
+                         q: float = 0) -> float:
     u, d = u_d(sigma, t, N)
-    p = (exp(r * time_step(t, N)) - d) / (u - d)
+    p = (exp((r - q) * time_step(t, N)) - d) / (u - d)
     assert 0 < p < 1, f"p = {p} is not a valid probability"
     return p
 
@@ -134,11 +131,14 @@ def plot_convergence(S: float = 100, K: float = 100, t: float = 1,
                      r: float = 0.05, sigma: float = 0.2,
                      option_type: str = "call", exercise: str = "european",
                      n=200) -> None:
+    """Plot the binomial tree price against number of steps N."""
+    # The Black-Scholes reference assumes no dividends. For q > 0,
+    # the closed form would need a q-adjustment that this project
+    # does not implement.
 
     bs_price = bs_call_price(S, K, t, r, sigma)
     prices = np.array([binomial_price(S, K, t, r, sigma, N, option_type,
                                       exercise) for N in range(1, n + 1)])
-
     plt.figure(figsize=(8, 5))
     plt.plot(
         np.arange(1, n + 1),
@@ -158,5 +158,19 @@ def plot_convergence(S: float = 100, K: float = 100, t: float = 1,
 
 
 if __name__ == "__main__":
-    print(binomial_price(100, 100, 1, 0.05, 0.2, 1000, "put", "european"))
-    # plot_convergence()
+    std = (100, 100, 1, 0.05, 0.2, 1000)
+    itm = (150, 100, 1, 0.05, 0.2, 1000)
+
+    print(f"European call: {binomial_price(*std, 'call', 'european'):.4f}")
+    print(f"European put:  {binomial_price(*std, 'put', 'european'):.4f}")
+    print(f"American call: {binomial_price(*std, 'call', 'american'):.4f}")
+    print(f"American put:  {binomial_price(*std, 'put', 'american'):.4f}")
+
+    print()
+    print("Deep ITM call, q = 0.10:")
+    euro = binomial_price(*itm, "call", "european", q=0.10)
+    amer = binomial_price(*itm, "call", "american", q=0.10)
+    print(f"  European: {euro:.4f}")
+    print(f"  American: {amer:.4f}")
+
+    plot_convergence()
