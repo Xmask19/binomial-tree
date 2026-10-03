@@ -21,7 +21,7 @@ TREE_N1_PUT = 7.285227
 d1 = (log(S0 / K0) + (R0 - Q0 + SIGMA0 ** 2 / 2) * T0) / (SIGMA0 * sqrt(T0))
 d2 = d1 - SIGMA0 * sqrt(T0)
 BS_CALL_DIVIDEND = (
-    S0 * exp(- Q0 * T0) * norm.cdf(d1)
+    S0 * exp(-Q0 * T0) * norm.cdf(d1)
     - K0 * exp(-R0 * T0) * norm.cdf(d2))
 BS_PUT_DIVIDEND = (
     K0 * exp(-R0 * T0) * norm.cdf(-d2)
@@ -147,7 +147,7 @@ def test_american_call_equals_european_call_without_dividends():
     assert american == pytest.approx(european, abs=1e-10)
 
 
-def test_american_put_greater():
+def test_american_put_more_valuable_than_european_put():
     """
     Early exercise makes an American put
     more valuable than a European one.

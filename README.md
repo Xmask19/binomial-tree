@@ -9,6 +9,7 @@ This project implements a binomial options pricing model. The stock price is mod
 - European call and put prices via the CRR binomial tree.
 - American options, with early exercise evaluated at each node.
 - Convergence study against the Black-Scholes closed-form price.
+- Continuous dividend yield, including dividend-adjusted risk-neutral probabilities and European/American option pricing.
 - A pytest suite covering the tree, the pricing recursion, and
   the American-vs-European relationships.
 
@@ -19,7 +20,7 @@ This project implements a binomial options pricing model. The stock price is mod
 - [x] Stage 2: European put and put-call parity
 - [x] Stage 3: Convergence study
 - [x] Stage 4: American options
-- [ ] Stage 5: Dividends
+- [x] Stage 5: Continuous dividend yield
 - [ ] Stage 6: Trinomial tree
 
 ## Convergence
@@ -45,9 +46,62 @@ where the continuation value is the discounted expected value of the next two no
 For a non-dividend-paying stock, two results hold:
 - **American calls equal European calls.** Exercising early means paying the strike sooner and giving up the interest that could have been earned on it, without gaining anything in return.
 
-- **American puts are worth more than European puts.** Exercising a deep in-the-money put early lets the strike be invested at the risk-free rate, which is valuable when rates are positive.
+**American puts are worth at least as much as European puts.** When early exercise is optimal, the American put has a positive early-exercise premium.
 
 For the standard test case, the American call price matches the European call at $10.45$, while the American put exceeds the European put: at $N = 1000$ the American put is $6.09$ against a European put of $5.57$.
+
+## Continuous dividend yield
+
+The model supports a continuous dividend yield \(q\).
+
+Under the risk-neutral measure, the stock price has expected capital-growth
+rate
+
+\[
+r-q,
+\]
+
+since the dividend yield \(q\) forms part of the stock's total return.
+The CRR risk-neutral probability therefore becomes
+
+\[
+p =
+\frac{e^{(r-q)\Delta t} - d}{u-d}.
+\]
+
+For European options, the tree is validated against the dividend-adjusted
+Black-Scholes formulas:
+
+\[
+C =
+S_0 e^{-qT} N(d_1)
+-
+K e^{-rT} N(d_2),
+\]
+
+\[
+P =
+K e^{-rT} N(-d_2)
+-
+S_0 e^{-qT} N(-d_1).
+\]
+
+The implementation also satisfies dividend-adjusted put-call parity,
+
+\[
+C-P =
+S_0 e^{-qT}
+-
+K e^{-rT}.
+\]
+
+Increasing the dividend yield lowers the value of European calls and raises
+the value of European puts, all else being equal.
+
+Dividends also change the early-exercise behaviour of American calls. For a
+non-dividend-paying stock, an American call has the same value as the
+corresponding European call. With a sufficiently high dividend yield, early
+exercise can become optimal and the American call can therefore be worth more.
 
 ## Usage
 
@@ -65,6 +119,11 @@ The suite validates:
 - European calls and puts against known values and Black-Scholes.
 - Put-call parity for European options.
 - American calls equal European calls for a non-dividend-paying stock; American puts exceed European puts.
+- Dividend-adjusted risk-neutral growth.
+- European call and put convergence to dividend-adjusted Black-Scholes.
+- Dividend-adjusted put-call parity.
+- The effect of dividends on European call and put values.
+- American call early-exercise behaviour with and without dividends.
 
 ## Project structure
 
