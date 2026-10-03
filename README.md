@@ -50,50 +50,50 @@ For a non-dividend-paying stock, two results hold:
 
 For the standard test case, the American call price matches the European call at $10.45$, while the American put exceeds the European put: at $N = 1000$ the American put is $6.09$ against a European put of $5.57$.
 
+
 ## Continuous dividend yield
 
-The model supports a continuous dividend yield \(q\).
+The model supports a continuous dividend yield $q$.
 
 Under the risk-neutral measure, the stock price has expected capital-growth
 rate
 
-\[
-r-q,
-\]
+$$
+r - q,
+$$
 
-since the dividend yield \(q\) forms part of the stock's total return.
+since the dividend yield $q$ forms part of the stock's total return.
 The CRR risk-neutral probability therefore becomes
 
-\[
-p =
-\frac{e^{(r-q)\Delta t} - d}{u-d}.
-\]
+$$
+p = \frac{e^{(r-q)\Delta t} - d}{u-d}.
+$$
 
 For European options, the tree is validated against the dividend-adjusted
 Black-Scholes formulas:
 
-\[
+$$
 C =
 S_0 e^{-qT} N(d_1)
 -
-K e^{-rT} N(d_2),
-\]
+K e^{-rT} N(d_2).
+$$
 
-\[
+$$
 P =
 K e^{-rT} N(-d_2)
 -
 S_0 e^{-qT} N(-d_1).
-\]
+$$
 
 The implementation also satisfies dividend-adjusted put-call parity,
 
-\[
-C-P =
+$$
+C - P =
 S_0 e^{-qT}
 -
 K e^{-rT}.
-\]
+$$
 
 Increasing the dividend yield lowers the value of European calls and raises
 the value of European puts, all else being equal.
